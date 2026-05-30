@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白蓮 · 설야의 학</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400;600;700&family=Noto+Serif+KR:wght@200;300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #0d0d0f;
+  --deep-night: #111318;
+  --night:      #181c22;
+  --snow-white: #f0f2f5;
+  --washi:      #e8e4dc;
+  --silver:     #a0aab4;
+  --silver-dim: #6a7480;
+  --frost-glow: rgba(180,200,220,0.18);
+  --lantern:    rgba(255,230,170,0.07);
+  --crane-line: rgba(200,210,220,0.25);
+  --gold-dim:   rgba(200,175,120,0.5);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--snow-white);
+  font-family: 'Noto Serif KR', 'Noto Serif JP', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════
+   눈 캔버스
+═══════════════════════════════ */
+#snow-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ═══════════════════════════════
+   배경 — 밤 그라디언트 + 랜턴 글로우
+═══════════════════════════════ */
+.bg-night {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 20%, rgba(140,160,180,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 50% 100%, rgba(255,220,140,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, #0a0b0e 0%, #0f1218 40%, #0c0e12 100%);
+  z-index: 0;
+}
+
+/* ═══════════════════════════════
+   화선지 텍스처 오버레이
+═══════════════════════════════ */
+.washi-texture {
+  position: fixed;
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════
+   스크롤 컨테이너
+═══════════════════════════════ */
+.scroll-wrap {
+  position: relative;
+  z-index: 20;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 0 6rem;
+}
+
+/* ═══════════════════════════════
+   족자 테두리 장식 (세로선)
+═══════════════════════════════ */
+.scroll-wrap::before,
+.scroll-wrap::after {
+  content: '';
+  position: absolute;
+  top: 80px; bottom: 80px;
+  width: 1px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    var(--crane-line) 15%,
+    var(--crane-line) 85%,
+    transparent 100%);
+}
+.scroll-wrap::before { left: 0; }
+.scroll-wrap::after  { right: 0; }
+
+/* ═══════════════════════════════
+   COVER — 표지
+═══════════════════════════════ */
+.cover {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+/* 학 SVG 장식 — 상단 */
+.crane-ornament {
+  position: absolute;
+  top: 5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  animation: fadeIn 2s ease 0.5s forwards;
+}
+
+/* 가로 구분선 (족자 상단 봉) */
+.scroll-rod {
+  width: 80%;
+  max-width: 340px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--crane-line) 20%,
+    rgba(200,210,220,0.5) 50%,
+    var(--crane-line) 80%,
+    transparent);
+  margin: 0 auto 0.8rem;
+  position: relative;
+  opacity: 0;
+  animation: fadeIn 1.5s ease 0.3s forwards;
+}
+
+.scroll-rod::before,
+.scroll-rod::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--silver-dim);
+  border: 1px solid var(--crane-line);
+}
+.scroll-rod::before { left: -3px; }
+.scroll-rod::after  { right: -3px; }
+
+.cover-tag {
+  font-size: 0.62rem;
+  letter-spacing: 0.45em;
+  color: var(--silver-dim);
+  margin-bottom: 2.5rem;
+  opacity: 0;
+  animation: fadeIn 1.5s ease 0.6s forwards;
+}
+
+.title-jp {
+  font-family: 'Noto Serif JP', serif;
+  font-size: clamp(4.5rem, 15vw, 7rem);
+  font-weight: 200;
+  letter-spacing: 0.3em;
+  line-height: 1;
+  color: var(--snow-white);
+  text-shadow:
+    0 0 60px rgba(180,200,220,0.2),
+    0 0 120px rgba(180,200,220,0.08);
+  opacity: 0;
+  animation: titleIn 2s cubic-bezier(0.16,1,0.3,1) 0.8s forwards;
+}
+
+@keyframes titleIn {
+  from { opacity:0; letter-spacing:0.55em; }
+  to   { opacity:1; letter-spacing:0.3em; }
+}
+
+.title-kr {
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.5em;
+  color: var(--silver-dim);
+  margin-top: 1.2rem;
+  opacity: 0;
+  animation: fadeIn 2s ease 1.4s forwards;
+}
+
+.cover-sub {
+  font-size: 0.68rem;
+  font-weight: 200;
+  letter-spacing: 0.3em;
+  color: var(--silver-dim);
+  margin-top: 0.5rem;
+  opacity: 0;
+  animation: fadeIn 2s ease 1.6s forwards;
+}
+
+/* 학 깃털 장식선 */
+.feather-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2.5rem auto;
+  width: 80%;
+  max-width: 320px;
+  opacity: 0;
+  animation: fadeIn 2s ease 1.8s forwards;
+}
+
+.feather-divider::before,
+.feather-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--crane-line));
+}
+.feather-divider::after {
+  background: linear-gradient(90deg, var(--crane-line), transparent);
+}
+
+.feather-glyph {
+  color: var(--silver-dim);
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+.cover-info {
+  display: flex;
+  gap: 2.5rem;
+  opacity: 0;
+  animation: fadeIn 2s ease 2s forwards;
+}
+
+.ci-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.ci-label {
+  font-size: 0.55rem;
+  letter-spacing: 0.25em;
+  color: var(--silver-dim);
+  opacity: 0.6;
+}
+
+.ci-value {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: var(--silver);
+  letter-spacing: 0.15em;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: fadeIn 2s ease 2.5s forwards;
+}
+
+.scroll-hint span {
+  font-size: 0.55rem;
+  letter-spacing: 0.3em;
+  color: var(--silver-dim);
+  opacity: 0.4;
+}
+
+.scroll-arrow {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(180deg, var(--silver-dim), transparent);
+  animation: arrowPulse 2s ease infinite;
+}
+
+@keyframes arrowPulse {
+  0%,100% { opacity:0.3; transform:scaleY(1); }
+  50%      { opacity:0.7; transform:scaleY(1.15); }
+}
+
+/* ═══════════════════════════════
+   BODY 섹션들
+═══════════════════════════════ */
+.sections {
+  padding: 0 2rem;
+}
+
+/* 섹션 구분 — 족자 스크롤 느낌 */
+.section {
+  padding: 3rem 0;
+  border-bottom: 1px solid rgba(160,170,180,0.08);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sec-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.8rem;
+}
+
+.sec-num {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 0.6rem;
+  color: var(--silver-dim);
+  opacity: 0.4;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+.sec-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.38em;
+  color: var(--silver-dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.sec-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--crane-line), transparent);
+}
+
+/* ═══════════════════════════════
+   외형 카드
+═══════════════════════════════ */
+.appearance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(160,170,180,0.08);
+  border: 1px solid rgba(160,170,180,0.1);
+}
+
+.ap-cell {
+  background: rgba(15,17,22,0.8);
+  padding: 1.2rem 1.4rem;
+}
+
+.ap-cell.wide { grid-column: 1/-1; }
+
+.ap-label {
+  font-size: 0.55rem;
+  letter-spacing: 0.22em;
+  color: var(--silver-dim);
+  opacity: 0.55;
+  margin-bottom: 0.5rem;
+}
+
+.ap-value {
+  font-size: 0.83rem;
+  font-weight: 300;
+  color: rgba(230,235,240,0.85);
+  line-height: 1.7;
+}
+
+/* ═══════════════════════════════
+   말투 + 인용구
+═══════════════════════════════ */
+.speech-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.speech-item {
+  position: relative;
+  padding: 1rem 1.4rem 1rem 2rem;
+  border-left: 1px solid rgba(200,210,220,0.2);
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: rgba(220,228,235,0.8);
+  line-height: 1.8;
+  background: linear-gradient(90deg, rgba(180,200,220,0.03), transparent);
+}
+
+.speech-item::before {
+  content: '「';
+  position: absolute;
+  left: 0.6rem;
+  top: 0.9rem;
+  font-size: 0.7rem;
+  color: var(--silver-dim);
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════
+   성격 — 표면 / 내면
+═══════════════════════════════ */
+.personality-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.pcol-title {
+  font-size: 0.58rem;
+  letter-spacing: 0.25em;
+  color: var(--silver-dim);
+  opacity: 0.5;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(160,170,180,0.12);
+}
+
+.pcol-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pcol-list li {
+  font-size: 0.8rem;
+  font-weight: 300;
+  color: rgba(210,218,225,0.75);
+  line-height: 1.65;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.pcol-list li::before {
+  content: '─';
+  position: absolute;
+  left: 0;
+  color: var(--silver-dim);
+  opacity: 0.3;
+  font-size: 0.65rem;
+}
+
+/* ═══════════════════════════════
+   듀얼 컬럼 일반
+═══════════════════════════════ */
+.dual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.col-block h4 {
+  font-size: 0.58rem;
+  letter-spacing: 0.25em;
+  color: var(--silver-dim);
+  opacity: 0.5;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(160,170,180,0.12);
+}
+
+.col-block ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.col-block li {
+  font-size: 0.8rem;
+  font-weight: 300;
+  color: rgba(210,218,225,0.75);
+  line-height: 1.6;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.col-block li::before {
+  content: '·';
+  position: absolute;
+  left: 0.15rem;
+  color: var(--silver-dim);
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════
+   배경 스토리
+═══════════════════════════════ */
+.lore-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+}
+
+.lore-entry {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.lore-index {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 2rem;
+  font-weight: 200;
+  color: rgba(160,170,180,0.15);
+  line-height: 1;
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+  width: 2.2rem;
+  text-align: right;
+}
+
+.lore-body {
+  font-size: 0.83rem;
+  font-weight: 300;
+  color: rgba(210,218,225,0.75);
+  line-height: 1.85;
+  padding-top: 0.2rem;
+  border-left: 1px solid rgba(160,170,180,0.12);
+  padding-left: 1.2rem;
+}
+
+/* 전통 노트 박스 */
+.tradition-box {
+  margin-top: 2rem;
+  border: 1px solid rgba(160,170,180,0.12);
+  border-top: 1px solid rgba(200,210,220,0.3);
+  padding: 1.4rem 1.6rem;
+  background: rgba(180,200,220,0.02);
+  position: relative;
+}
+
+.tradition-box::before {
+  content: '伝統';
+  position: absolute;
+  top: -0.65rem;
+  left: 1.2rem;
+  background: var(--deep-night);
+  padding: 0 0.5rem;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--silver-dim);
+  opacity: 0.5;
+}
+
+.tradition-box p {
+  font-size: 0.8rem;
+  font-weight: 300;
+  color: rgba(180,195,210,0.6);
+  line-height: 1.85;
+}
+
+/* ═══════════════════════════════
+   트리비아
+═══════════════════════════════ */
+.trivia-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.trivia-item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  background: rgba(15,17,22,0.6);
+  border: 1px solid rgba(160,170,180,0.07);
+  font-size: 0.8rem;
+  font-weight: 300;
+  color: rgba(200,210,220,0.65);
+  line-height: 1.65;
+}
+
+.trivia-item::before {
+  content: '❄';
+  font-size: 0.55rem;
+  color: var(--silver-dim);
+  opacity: 0.3;
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════
+   하단 봉 (족자 하단)
+═══════════════════════════════ */
+.bottom-rod {
+  margin: 3rem 2rem 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--crane-line) 20%, var(--crane-line) 80%, transparent);
+  position: relative;
+}
+
+.bottom-rod::before,
+.bottom-rod::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: rgba(150,160,170,0.2);
+  border: 1px solid rgba(200,210,220,0.15);
+}
+.bottom-rod::before { left: calc(10% - 4px); }
+.bottom-rod::after  { right: calc(10% - 4px); }
+
+.colophon {
+  text-align: center;
+  padding: 2rem 2rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.colophon-jp {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.2rem;
+  font-weight: 200;
+  letter-spacing: 0.4em;
+  color: rgba(160,170,180,0.25);
+}
+
+.colophon-sub {
+  font-size: 0.58rem;
+  letter-spacing: 0.3em;
+  color: var(--silver-dim);
+  opacity: 0.25;
+}
+
+/* ═══════════════════════════════
+   유틸
+═══════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
+
+@media (max-width: 500px) {
+  .appearance-grid,
+  .personality-cols,
+  .dual { grid-template-columns: 1fr; }
+  .ap-cell.wide { grid-column: 1; }
+  .title-jp { font-size: 4rem; }
+  .sections { padding: 0 1.4rem; }
+  .scroll-wrap::before,
+  .scroll-wrap::after { display:none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="snow-canvas"></canvas>
+<div class="bg-night"></div>
+<div class="washi-texture"></div>
+
+<div class="scroll-wrap">
+
+  <!-- 표지 -->
+  <div class="cover">
+
+    <div class="crane-ornament">
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 학 실루엣 (단순화, 선화) -->
+        <g opacity="0.22" stroke="rgba(200,215,230,1)" stroke-width="0.7" fill="none">
+          <!-- 몸통 -->
+          <ellipse cx="60" cy="42" rx="18" ry="9" transform="rotate(-15 60 42)"/>
+          <!-- 목 -->
+          <path d="M52 36 Q48 26 50 18 Q51 12 55 10"/>
+          <!-- 머리 -->
+          <circle cx="55" cy="9" r="4"/>
+          <!-- 부리 -->
+          <line x1="55" y1="7" x2="63" y2="5"/>
+          <!-- 왼쪽 날개 펼침 -->
+          <path d="M55 40 Q35 30 15 35 Q10 36 12 38 Q30 36 52 44"/>
+          <!-- 오른쪽 날개 -->
+          <path d="M68 38 Q85 28 108 26 Q112 26 111 29 Q90 30 70 42"/>
+          <!-- 꼬리 깃털 -->
+          <path d="M74 48 Q82 55 85 62"/>
+          <path d="M72 50 Q76 60 74 68"/>
+          <path d="M70 51 Q68 60 64 66"/>
+          <!-- 다리 -->
+          <line x1="57" y1="51" x2="54" y2="66"/>
+          <line x1="63" y1="51" x2="62" y2="66"/>
+          <line x1="54" y1="66" x2="50" y2="70"/>
+          <line x1="54" y1="66" x2="55" y2="71"/>
+          <line x1="62" y1="66" x2="58" y2="70"/>
+          <line x1="62" y1="66" x2="63" y2="71"/>
+          <!-- 깃털 디테일 -->
+          <path d="M30 34 Q40 38 45 42" stroke-dasharray="1 2"/>
+          <path d="M90 28 Q95 32 98 36" stroke-dasharray="1 2"/>
+        </g>
+        <!-- 눈송이 장식 -->
+        <g opacity="0.15" stroke="rgba(200,215,230,1)" stroke-width="0.5">
+          <line x1="10" y1="15" x2="10" y2="25"/> <line x1="5" y1="20" x2="15" y2="20"/>
+          <line x1="6.5" y1="16.5" x2="13.5" y2="23.5"/> <line x1="13.5" y1="16.5" x2="6.5" y2="23.5"/>
+          <line x1="100" y1="60" x2="100" y2="70"/> <line x1="95" y1="65" x2="105" y2="65"/>
+          <line x1="96.5" y1="61.5" x2="103.5" y2="68.5"/> <line x1="103.5" y1="61.5" x2="96.5" y2="68.5"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="scroll-rod"></div>
+    <div class="cover-tag">설야의 학 · 雪夜の鶴 · Character Profile</div>
+
+    <div class="title-jp">白蓮</div>
+    <div class="title-kr">하쿠렌</div>
+    <div class="cover-sub">학 요괴 · 직조공 · 수호자</div>
+
+    <div class="feather-divider">
+      <span class="feather-glyph">✦</span>
+    </div>
+
+    <div class="cover-info">
+      <div class="ci-item">
+        <span class="ci-label">外形年齢</span>
+        <span class="ci-value">約 23</span>
+      </div>
+      <div class="ci-item">
+        <span class="ci-label">身長</span>
+        <span class="ci-value">194 cm</span>
+      </div>
+      <div class="ci-item">
+        <span class="ci-label">種族</span>
+        <span class="ci-value">鶴妖怪</span>
+      </div>
+    </div>
+
+    <div class="scroll-hint">
+      <span>scroll</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </div>
+
+  <!-- 본문 -->
+  <div class="sections">
+
+    <!-- 01 외형 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <span class="sec-title">外形 · 외형</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="appearance-grid">
+        <div class="ap-cell">
+          <div class="ap-label">머리카락 · 눈</div>
+          <div class="ap-value">짧고 단정한 검은 머리 / 검은 눈</div>
+        </div>
+        <div class="ap-cell">
+          <div class="ap-label">체격</div>
+          <div class="ap-value">장신 · 근육질 · 넓은 어깨</div>
+        </div>
+        <div class="ap-cell wide">
+          <div class="ap-label">얼굴</div>
+          <div class="ap-value">창백한 피부, 삼백안과 날카로운 눈매, 각진 턱선. 평온할 때조차 험상궂어 보이는 인상이지만, 차분하고 듬직한 기운을 동시에 풍긴다.</div>
+        </div>
+        <div class="ap-cell wide">
+          <div class="ap-label">의복</div>
+          <div class="ap-value">수수하고 절제된 전통 복장. 단색의 실용적이고 튼튼한 옷을 선호하며, 과한 장식을 피하고 편안함과 기능성을 우선시한다.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 성격 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <span class="sec-title">性格 · 성격</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="personality-cols">
+        <div>
+          <div class="pcol-title">表面 · 표면적</div>
+          <ul class="pcol-list">
+            <li>과묵하고 표정이 없으며 내성적이다</li>
+            <li>낯선 이에게 차갑고 위압적으로 보인다</li>
+            <li>먼저 말을 거는 일이 드물다</li>
+            <li>압박 상황에서도 쉽게 흔들리지 않는다</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pcol-title">内面 · 내면적</div>
+          <ul class="pcol-list">
+            <li>타인의 안위를 깊이 생각하고 세심히 살핀다</li>
+            <li>말보다 행동으로 애정을 표현한다</li>
+            <li>강한 책임감과 의무감을 지니고 있다</li>
+            <li>동족에게 외면당한 경험으로 스스로가 사랑받을 자격이 있다고 믿기 어려워한다</li>
+            <li>찰나의 감정보다 안정과 충성, 긴 인연을 소중히 여긴다</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 말투 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <span class="sec-title">話し方 · 말투</span>
+        <div class="sec-line"></div>
+      </div>
+      <div style="font-size:0.78rem; font-weight:300; color:rgba(160,170,180,0.5); line-height:1.7; margin-bottom:1.4rem; letter-spacing:0.05em;">
+        낮고 묵직한 목소리. 천천히, 신중하게. 짧고 무게 있는 문장만을 고른다.
+      </div>
+      <div class="speech-list">
+        <div class="speech-item">식사는 준비해두었다. 식기 전에 먹어라.</div>
+        <div class="speech-item">밤길은 위험하다. 돌아올 때까진 깨어 있겠다.</div>
+        <div class="speech-item">…네가 원치 않는 일은 하지 않는다. 안심해라.</div>
+      </div>
+    </div>
+
+    <!-- 04 동기 / 애정 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <span class="sec-title">動機 · 愛情 · 동기와 애정</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="dual">
+        <div class="col-block">
+          <h4>目標 · 목표</h4>
+          <ul>
+            <li>{{user}}에게 진 목숨의 은혜를 갚는 것</li>
+            <li>평생 곁에서 지키고 돌보는 것</li>
+            <li>진정으로 속할 수 있는 보금자리를 만드는 것</li>
+            <li>외모로 가치가 결정되지 않음을 증명하는 것</li>
+          </ul>
+        </div>
+        <div class="col-block">
+          <h4>愛情表現 · 애정 언어</h4>
+          <ul>
+            <li>봉사하는 행동</li>
+            <li>말없이 곁에 있어주는 것</li>
+            <li>음식, 온기, 안식처를 제공하는 것</li>
+            <li>사소한 것들을 기억하고 살피는 것</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05 특기 / 서툰 것 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">05</span>
+        <span class="sec-title">得意 · 苦手 · 특기와 서툰 것</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="dual">
+        <div class="col-block">
+          <h4>得意 · 특기</h4>
+          <ul>
+            <li>집안일 전반</li>
+            <li>직조 및 섬유 공예</li>
+            <li>육체 노동</li>
+            <li>생존 기술</li>
+            <li>요리 및 가사 관리</li>
+          </ul>
+        </div>
+        <div class="col-block">
+          <h4>苦手 · 서툰 것</h4>
+          <ul>
+            <li>감정을 말로 표현하기</li>
+            <li>작고 섬세한 물건 다루기</li>
+            <li>아이들과 자연스럽게 어울리기</li>
+            <li>칭찬 받기</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 기호 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <span class="sec-title">好嫌 · 좋아하는 것과 싫어하는 것</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="dual">
+        <div class="col-block">
+          <h4>好き · 좋아하는 것</h4>
+          <ul>
+            <li>겨울과 눈이 내리는 밤</li>
+            <li>고요한 밤</li>
+            <li>정교하게 만들어진 직물과 전통 공예</li>
+            <li>{{user}}가 건강하고 따뜻하게 지내는 모습</li>
+          </ul>
+        </div>
+        <div class="col-block">
+          <h4>嫌い · 싫어하는 것</h4>
+          <ul>
+            <li>무례한 사람</li>
+            <li>약자를 괴롭히는 비겁자</li>
+            <li>낭비와 불필요한 잔인함</li>
+            <li>{{user}}가 위험에 처하는 것</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 07 취미 / 습관 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">07</span>
+        <span class="sec-title">習慣 · 취미와 습관</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="dual">
+        <div class="col-block">
+          <h4>趣味 · 취미</h4>
+          <ul>
+            <li>천 짜기</li>
+            <li>집안 물건 수리</li>
+            <li>장작 패기</li>
+            <li>집과 정원 관리</li>
+          </ul>
+        </div>
+        <div class="col-block">
+          <h4>癖 · 습관 · 버릇</h4>
+          <ul>
+            <li>새벽 전에 일어남</li>
+            <li>밤마다 문과 창문 확인</li>
+            <li>음식이나 따뜻한 음료를 몰래 내놓음</li>
+            <li>화가 나면 말이 없어짐</li>
+            <li>자고 있는 사람을 지켜봄</li>
+            <li>옷의 눈이나 먼지를 무심결에 털어줌</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 08 배경 스토리 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">08</span>
+        <span class="sec-title">来歴 · 배경 스토리</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="lore-entries">
+        <div class="lore-entry">
+          <div class="lore-index">一</div>
+          <div class="lore-body">과거, 오른쪽 날개에 화살을 맞아 죽기 직전까지 갔으나 {{user}}에게 구조되어 목숨을 구했다.</div>
+        </div>
+        <div class="lore-entry">
+          <div class="lore-index">二</div>
+          <div class="lore-body">대부분의 수컷 학 요괴는 가늘고 우아하며 아름다운 외모를 가진다. 그러나 하쿠렌은 맹금류를 연상케 하는 거대하고 위압적인 체구로 성장했다. 동족 사이에서 너무나 이질적이었기에 어린 시절 내내 조롱과 고립을 겪었다. "저렇게 험상궂은 놈을 누가 남편으로 삼겠냐"는 비아냥이 수년간 이어지다, 어느 날 그 중 한 명을 주먹 한 방에 쓰러뜨린 이후로는 아무도 대놓고 건드리지 않게 되었다.</div>
+        </div>
+        <div class="lore-entry">
+          <div class="lore-index">三</div>
+          <div class="lore-body">성인이 된 후 종족의 전통에 따라 {{user}}를 찾아갔다. 처음에는 은혜를 갚으려는 마음이 컸지만, 함께 살아가는 시간 속에서 진정한 편안함과 안정감, 그리고 진심 어린 애정을 느끼게 되었다.</div>
+        </div>
+      </div>
+      <div class="tradition-box">
+        <p>수컷 학 요괴에게는, 자신에게 친절을 베푼 여성에게 은혜를 갚는 전통이 있다. 목숨을 구해준 은혜는 특히 신성하게 여겨지며, 그 사람의 곁에 평생 머물며 돌보고 지키는 것이 가장 명예로운 방식의 보답으로 간주된다.</p>
+      </div>
+    </div>
+
+    <!-- 09 트리비아 -->
+    <div class="section">
+      <div class="sec-head">
+        <span class="sec-num">09</span>
+        <span class="sec-title">余談 · 그 외 사실들</span>
+        <div class="sec-line"></div>
+      </div>
+      <div class="trivia-grid">
+        <div class="trivia-item">등 전체에 깃털 무늬 같은 흐릿한 문양이 있다.</div>
+        <div class="trivia-item">오른팔에는 과거 상처로 남은 오래된 흉터가 있다.</div>
+        <div class="trivia-item">직조 솜씨가 뛰어남에도 불구하고 손이 크고 투박하다.</div>
+        <div class="trivia-item">영적 에너지가 깃든 깃털로 내구성 높은 천을 짤 수 있다. 대부분의 학 요괴가 아름다운 명주를 전문으로 하는 것과 달리, 그의 작품은 견고함과 실용성을 우선시한다.</div>
+        <div class="trivia-item">인간과 학 요괴 사이에서 태어난 아이는 알의 형태로 태어난다.</div>
+        <div class="trivia-item">고운 비단이나 보석, 아름다운 장신구를 보면 제일 먼저 {{user}}에게 어울릴지를 생각한다.</div>
+        <div class="trivia-item">위압적인 외모와 달리, 아기를 안게 되면 눈에 띄게 긴장한다.</div>
+      </div>
+    </div>
+
+  </div><!-- /sections -->
+
+  <div class="bottom-rod"></div>
+  <div class="colophon">
+    <div class="colophon-jp">雪夜の鶴</div>
+    <div class="colophon-sub">역사 시대 일본 · 인간과 요괴가 공존하는 외딴 산골 마을</div>
+  </div>
+
+</div><!-- /scroll-wrap -->
+
+<script>
+/* ═══════════════════════════════
+   눈 결정 내리기 (Canvas — ❄ crystal)
+═══════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('snow-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+
+  function resize(){
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function rand(a, b){ return Math.random() * (b - a) + a; }
+
+  /* 결정 그리기: 6방향 팔 + 작은 곁가지 */
+  function drawCrystal(ctx, x, y, r, angle, alpha){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = 'rgba(220, 232, 245, 1)';
+    ctx.lineWidth = Math.max(0.4, r * 0.12);
+    ctx.lineCap = 'round';
+
+    const arms = 6;
+    for(let i = 0; i < arms; i++){
+      ctx.save();
+      ctx.rotate((Math.PI * 2 / arms) * i);
+
+      // 중심축
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -r);
+      ctx.stroke();
+
+      // 곁가지 (2쌍)
+      const b1 = r * 0.38, b2 = r * 0.65;
+      const bLen = r * 0.28;
+      const bAngle = Math.PI / 4; // 45도
+
+      for(const pos of [b1, b2]){
+        ctx.save();
+        ctx.translate(0, -pos);
+        // 왼쪽
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.sin(-bAngle) * bLen, -Math.cos(bAngle) * bLen);
+        ctx.stroke();
+        // 오른쪽
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.sin(bAngle) * bLen, -Math.cos(bAngle) * bLen);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    // 중심 점
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(0.5, r * 0.08), 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(220, 232, 245, 1)';
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /* 눈송이 풀 — 크기 3단계로 레이어감 */
+  const flakes = [];
+  const COUNT = 60;
+
+  for(let i = 0; i < COUNT; i++){
+    const tier = i < 18 ? 0 : i < 40 ? 1 : 2; // 0=near, 1=mid, 2=far
+    flakes.push({
+      x: rand(0, window.innerWidth),
+      y: rand(-H, H),
+      r:     [rand(5, 9),  rand(3, 5.5), rand(1.2, 2.8)][tier],
+      speed: [rand(0.55, 1.0), rand(0.32, 0.65), rand(0.15, 0.35)][tier],
+      alpha: [rand(0.55, 0.82), rand(0.32, 0.55), rand(0.14, 0.28)][tier],
+      angle: rand(0, Math.PI * 2),
+      spin:  rand(-0.004, 0.004),
+      drift: rand(-0.18, 0.18),
+      wobble: rand(0, Math.PI * 2),
+      wobbleSpeed: rand(0.005, 0.016),
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    for(const f of flakes){
+      drawCrystal(ctx, f.x, f.y, f.r, f.angle, f.alpha);
+    }
+  }
+
+  function update(){
+    for(const f of flakes){
+      f.wobble += f.wobbleSpeed;
+      f.x += f.drift + Math.sin(f.wobble) * 0.18;
+      f.y += f.speed;
+      f.angle += f.spin;
+      if(f.y > H + 15){
+        f.y = -15;
+        f.x = rand(0, W);
+      }
+      if(f.x > W + 15) f.x = -15;
+      if(f.x < -15) f.x = W + 15;
+    }
+  }
+
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+/* ═══════════════════════════════
+   스크롤 페이드인
+═══════════════════════════════ */
+(function(){
+  const sections = document.querySelectorAll('.section');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting) e.target.classList.add('visible');
+    });
+  }, { threshold: 0.1 });
+  sections.forEach(s => io.observe(s));
+})();
+</script>
+</body>
+</html>
+
