@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<audio id="bgm" loop>
+  <source src="Durumitheme.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+document.addEventListener('click', function() {
+  const bgm = document.getElementById('bgm');
+  bgm.volume = 0.5;
+  bgm.play();
+}, { once: true });
+</script>
+
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
