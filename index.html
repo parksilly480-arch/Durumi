@@ -25,14 +25,6 @@
 html { scroll-behavior: smooth; }
 
 body {
-<script>
-document.addEventListener('click', function() {
-  const bgm = document.getElementById('bgm');
-  bgm.volume = 0.5;
-  bgm.play();
-}, { once: true });
-</script>
-  
   background: var(--ink);
   color: var(--snow-white);
   font-family: 'Noto Serif KR', 'Noto Serif JP', serif;
@@ -48,7 +40,7 @@ document.addEventListener('click', function() {
   top: 0; left: 0;
   width: 100%; height: 100%;
   pointer-events: none;
-  z-index: 10;
+  z-index: 0;
 }
 
 /* ═══════════════════════════════
@@ -82,7 +74,7 @@ document.addEventListener('click', function() {
 ═══════════════════════════════ */
 .scroll-wrap {
   position: relative;
-  z-index: 20;
+  z-index: 2;
   max-width: 680px;
   margin: 0 auto;
   padding: 0 0 6rem;
@@ -721,7 +713,7 @@ document.addEventListener('click', function() {
 
     <div class="title-jp">白蓮</div>
     <div class="title-kr">하쿠렌</div>
-    <div class="cover-sub">두루미 · 직조공 · 남편</div>
+    <div class="cover-sub">학 요괴 · 직조공 · 수호자</div>
 
     <div class="feather-divider">
       <span class="feather-glyph">✦</span>
@@ -769,7 +761,7 @@ document.addEventListener('click', function() {
         </div>
         <div class="ap-cell wide">
           <div class="ap-label">얼굴</div>
-          <div class="ap-value">하얀 피부, 삼백안과 날카로운 눈매, 각진 턱선. 평온할 때조차 험상궂어 보이는 인상이지만, 차분하고 듬직한 기운을 동시에 풍기는 미남.</div>
+          <div class="ap-value">창백한 피부, 삼백안과 날카로운 눈매, 각진 턱선. 평온할 때조차 험상궂어 보이는 인상이지만, 차분하고 듬직한 기운을 동시에 풍긴다.</div>
         </div>
         <div class="ap-cell wide">
           <div class="ap-label">의복</div>
@@ -1000,12 +992,12 @@ document.addEventListener('click', function() {
 
 <script>
 /* ═══════════════════════════════
-   눈 결정 내리기 (Canvas — ❄ crystal)
+   눈 내리기 (Canvas)
 ═══════════════════════════════ */
 (function(){
   const canvas = document.getElementById('snow-canvas');
   const ctx = canvas.getContext('2d');
-  let W, H;
+  let W, H, flakes = [];
 
   function resize(){
     W = canvas.width  = window.innerWidth;
@@ -1014,101 +1006,44 @@ document.addEventListener('click', function() {
   resize();
   window.addEventListener('resize', resize);
 
-  function rand(a, b){ return Math.random() * (b - a) + a; }
+  const COUNT = 90;
 
-  /* 결정 그리기: 6방향 팔 + 작은 곁가지 */
-  function drawCrystal(ctx, x, y, r, angle, alpha){
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = 'rgba(220, 232, 245, 1)';
-    ctx.lineWidth = Math.max(0.4, r * 0.12);
-    ctx.lineCap = 'round';
+  function rand(a,b){ return Math.random()*(b-a)+a; }
 
-    const arms = 6;
-    for(let i = 0; i < arms; i++){
-      ctx.save();
-      ctx.rotate((Math.PI * 2 / arms) * i);
-
-      // 중심축
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, -r);
-      ctx.stroke();
-
-      // 곁가지 (2쌍)
-      const b1 = r * 0.38, b2 = r * 0.65;
-      const bLen = r * 0.28;
-      const bAngle = Math.PI / 4; // 45도
-
-      for(const pos of [b1, b2]){
-        ctx.save();
-        ctx.translate(0, -pos);
-        // 왼쪽
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.sin(-bAngle) * bLen, -Math.cos(bAngle) * bLen);
-        ctx.stroke();
-        // 오른쪽
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.sin(bAngle) * bLen, -Math.cos(bAngle) * bLen);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      ctx.restore();
-    }
-
-    // 중심 점
-    ctx.beginPath();
-    ctx.arc(0, 0, Math.max(0.5, r * 0.08), 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(220, 232, 245, 1)';
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  /* 눈송이 풀 — 크기 3단계로 레이어감 */
-  const flakes = [];
-  const COUNT = 60;
-
-  for(let i = 0; i < COUNT; i++){
-    const tier = i < 18 ? 0 : i < 40 ? 1 : 2; // 0=near, 1=mid, 2=far
+  for(let i=0;i<COUNT;i++){
     flakes.push({
       x: rand(0, window.innerWidth),
-      y: rand(-H, H),
-      r:     [rand(5, 9),  rand(3, 5.5), rand(1.2, 2.8)][tier],
-      speed: [rand(0.55, 1.0), rand(0.32, 0.65), rand(0.15, 0.35)][tier],
-      alpha: [rand(0.55, 0.82), rand(0.32, 0.55), rand(0.14, 0.28)][tier],
-      angle: rand(0, Math.PI * 2),
-      spin:  rand(-0.004, 0.004),
-      drift: rand(-0.18, 0.18),
-      wobble: rand(0, Math.PI * 2),
-      wobbleSpeed: rand(0.005, 0.016),
+      y: rand(0, window.innerHeight),
+      r: rand(0.5, 2.2),
+      speed: rand(0.3, 1.1),
+      drift: rand(-0.2, 0.2),
+      opacity: rand(0.08, 0.45),
+      wobble: rand(0, Math.PI*2),
+      wobbleSpeed: rand(0.003, 0.012),
     });
   }
 
   function draw(){
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0,0,W,H);
     for(const f of flakes){
-      drawCrystal(ctx, f.x, f.y, f.r, f.angle, f.alpha);
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(220,230,240,${f.opacity})`;
+      ctx.fill();
     }
   }
 
   function update(){
     for(const f of flakes){
       f.wobble += f.wobbleSpeed;
-      f.x += f.drift + Math.sin(f.wobble) * 0.18;
+      f.x += f.drift + Math.sin(f.wobble)*0.15;
       f.y += f.speed;
-      f.angle += f.spin;
-      if(f.y > H + 15){
-        f.y = -15;
+      if(f.y > H + 5){
+        f.y = -5;
         f.x = rand(0, W);
       }
-      if(f.x > W + 15) f.x = -15;
-      if(f.x < -15) f.x = W + 15;
+      if(f.x > W+5) f.x = -5;
+      if(f.x < -5) f.x = W+5;
     }
   }
 
@@ -1135,4 +1070,3 @@ document.addEventListener('click', function() {
 </script>
 </body>
 </html>
-
